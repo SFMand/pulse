@@ -1,0 +1,14 @@
+# Test configuration for pulse
+
+interval: "10s"
+
+targets:
+  - name: "Example Service"
+    url: "https://example.com"
+    type: "http"
+    interval: "5s"
+    timeout: "3s"
+  - name: "Broken Service"
+    url: "http://localhost:9999"
+    type: "http"
+    timeout: "3s"
