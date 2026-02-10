@@ -2,15 +2,21 @@ package cmd
 
 import (
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+var cfgFile string
+var verbose bool
+var interval time.Duration
 
 var rootCmd = &cobra.Command{
 	Use:   "pulse",
 	Short: "A lightweight, real-time service health monitor for the command line.",
 	Long: `Pulse is a minimalist infrastructure monitoring tool built in Go.
-It allows you to track the availability and latency of endpoints and services directly from your terminal.`,
+	 It allows you to track the availability and latency of endpoints and services directly from your terminal.`,
 
 	Run: func(cmd *cobra.Command, args []string) {},
 }
@@ -23,4 +29,33 @@ func Execute() {
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
+	
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to config file")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
+	rootCmd.PersistentFlags().DurationVarP(&interval, "interval", "i", 30*time.Second, "Polling interval")
+}
+
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	} else {
+		home, err := os.UserHomeDir()
+		cobra.CheckErr(err)
+
+		viper.AddConfigPath(home)
+		viper.AddConfigPath(".")
+		viper.AddConfigPath("/etc/pulse")
+		viper.SetConfigName("pulse")
+	}
+
+	viper.SetEnvPrefix("PULSE")
+	viper.BindEnv("config")
+	viper.AutomaticEnv()
+
+	if err := viper.ReadInConfig(); err == nil {
+		if verbose {
+			println("Using config file:", viper.ConfigFileUsed())
+		}
+	}
 }
