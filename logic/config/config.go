@@ -9,6 +9,7 @@ const (
 
 type Config struct {
 	Interval string   `mapstructure:"interval"`
+	Timeout  string   `mapstructure:"timeout"`
 	Targets  []Target `mapstructure:"targets"`
 }
 
