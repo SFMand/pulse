@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -39,15 +40,13 @@ func startMonitoring(flagOverridden bool) error {
 	cfgInterval := viper.GetDuration("interval")
 	timeout := viper.GetDuration("timeout")
 	if timeout == 0 {
+		slog.Debug("invalid global timeout")
 		timeout = config.DefaultTimeout
 	}
 
 	var rawTargets []config.Target
 	if err := viper.UnmarshalKey("targets", &rawTargets); err != nil {
 		return fmt.Errorf("failed to read targets from config: %w", err)
-	}
-	if len(rawTargets) == 0 {
-		return fmt.Errorf("no targets found in configuration")
 	}
 
 	client := &http.Client{
@@ -64,9 +63,7 @@ func startMonitoring(flagOverridden bool) error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigs
-		if verbose {
-			fmt.Println("Received interrupt, shutting down monitor...")
-		}
+		slog.Debug("received interrupt")
 		cancel()
 	}()
 
@@ -79,7 +76,7 @@ func startMonitoring(flagOverridden bool) error {
 		}
 		parsed, err := url.Parse(t.URL)
 		if err != nil {
-			fmt.Printf("Skipping target with invalid URL %q: %v\n", t.URL, err)
+			slog.Warn("skipping invalid target", "name", name, "url", t.URL, "error", err)
 			continue
 		}
 
@@ -89,7 +86,7 @@ func startMonitoring(flagOverridden bool) error {
 		} else if t.Interval != "" {
 			d, err := time.ParseDuration(t.Interval)
 			if err != nil {
-				fmt.Printf("Invalid interval for target %s (%s), using default\n", name, t.Interval)
+				slog.Warn("invalid interval for target", "name", name, "interval", t.Interval, "error", err)
 				tgtInterval = config.DefaultInterval
 			} else {
 				tgtInterval = d
@@ -100,9 +97,7 @@ func startMonitoring(flagOverridden bool) error {
 			tgtInterval = config.DefaultInterval
 		}
 
-		if verbose {
-			fmt.Printf("Verbose: Starting monitor for %s with interval %v\n", name, tgtInterval)
-		}
+		slog.Debug("start monitoring target", "name", name, "url", t.URL, "interval", tgtInterval.String())
 
 		wg.Add(1)
 		go func(ctx context.Context, name string, u *url.URL, interval time.Duration) {
@@ -115,14 +110,14 @@ func startMonitoring(flagOverridden bool) error {
 				resp, err := client.Get(u.String())
 				latency := time.Since(start)
 				if err != nil {
-					fmt.Printf("%s: DOWN (%v)\n", name, err)
+					slog.Warn("DOWN", slog.Group("target", "name", name, "full", u.Redacted(), "host", u.Host, "path", u.Path), "error", err)
 					return
 				}
 				resp.Body.Close()
 				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-					fmt.Printf("%s: OK (%s) %d %v\n", name, u.Host, resp.StatusCode, latency)
+					slog.Info("UP", slog.Group("target", "name", name, "full", u.Redacted(), "host", u.Host, "path", u.Path), "status", resp.StatusCode, "latency", latency.String())
 				} else {
-					fmt.Printf("%s: UNHEALTHY (%d) %v\n", name, resp.StatusCode, latency)
+					slog.Warn("UNHEALTHY", slog.Group("target", "name", name, "full", u.Redacted(), "host", u.Host, "path", u.Path), "status", resp.StatusCode, "latency", latency.String())
 				}
 			}
 
@@ -132,9 +127,7 @@ func startMonitoring(flagOverridden bool) error {
 			for {
 				select {
 				case <-ctx.Done():
-					if verbose {
-						fmt.Printf("Stopping monitor for %s\n", name)
-					}
+					slog.Info("stop monitoring target", "name", name, "url", t.URL)
 					return
 				case <-ticker.C:
 					checkOnce()
