@@ -1,15 +1,17 @@
 package cmd
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
-var verbose bool
-
+var (
+	cfgFile string
+	verbose bool
+)
 var rootCmd = &cobra.Command{
 	Use:   "pulse",
 	Short: "A lightweight, real-time service health monitor for the command line.",
@@ -27,11 +29,20 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(initLogger, initConfig)
 	viper.SetDefault("interval", "30s")
 	viper.SetDefault("targets", []map[string]string{})
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
+}
+
+func initLogger() {
+	level := slog.LevelInfo
+	if verbose {
+		level = slog.LevelDebug
+	}
+	Logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+	slog.SetDefault(Logger)
 }
 
 func initConfig() {
