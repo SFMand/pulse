@@ -33,7 +33,7 @@ var monitorCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(monitorCmd)
-	monitorCmd.Flags().DurationVarP(&monitorInterval, "interval", "i", 30*time.Second, "Polling interval (overrides config)")
+	monitorCmd.Flags().DurationVarP(&monitorInterval, "interval", "i", config.DefaultInterval, "Polling interval (overrides config)")
 }
 
 func startMonitoring(flagOverridden bool) error {
@@ -114,7 +114,7 @@ func startMonitoring(flagOverridden bool) error {
 					return
 				}
 				resp.Body.Close()
-				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
 					slog.Info("UP", slog.Group("target", "name", name, "full", u.Redacted(), "host", u.Host, "path", u.Path), "status", resp.StatusCode, "latency", latency.String())
 				} else {
 					slog.Warn("UNHEALTHY", slog.Group("target", "name", name, "full", u.Redacted(), "host", u.Host, "path", u.Path), "status", resp.StatusCode, "latency", latency.String())

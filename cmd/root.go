@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/SFMand/pulse/logic/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -31,7 +32,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initLogger, initConfig)
-	viper.SetDefault("interval", "30s")
+	viper.SetDefault("interval", config.DefaultInterval)
 	viper.SetDefault("targets", []map[string]string{})
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
