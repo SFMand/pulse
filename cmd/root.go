@@ -33,6 +33,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initLogger, initConfig)
 	viper.SetDefault("interval", config.DefaultInterval)
+	viper.SetDefault("timeout", config.DefaultTimeout)
 	viper.SetDefault("targets", []map[string]string{})
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
