@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"io"
 	"log/slog"
 	"os"
 
@@ -18,6 +19,10 @@ var rootCmd = &cobra.Command{
 	Short: "A lightweight, real-time service health monitor for the command line.",
 	Long: `Pulse is a minimalist monitoring tool built in Go.
 	 It allows you to track the availability and latency of endpoints and services directly from your terminal.`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		setLoggerForCommand(cmd)
+		return nil
+	},
 
 	Run: func(cmd *cobra.Command, args []string) {},
 }
@@ -31,7 +36,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initLogger, initConfig)
+	cobra.OnInitialize(initConfig)
 	viper.SetDefault("interval", config.DefaultInterval)
 	viper.SetDefault("timeout", config.DefaultTimeout)
 	viper.SetDefault("targets", []map[string]string{})
@@ -39,7 +44,12 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
 }
 
-func initLogger() {
+func setLoggerForCommand(cmd *cobra.Command) {
+	if cmd.Name() == "monitor" {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(io.Discard, nil)))
+		return
+	}
+
 	level := slog.LevelInfo
 	if verbose {
 		level = slog.LevelDebug
